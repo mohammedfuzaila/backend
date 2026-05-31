@@ -14,12 +14,3 @@ from django.core.wsgi import get_wsgi_application
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'portfolio_backend.settings')
 
 application = get_wsgi_application()
-
-# Automatically run migrations on startup to fix Render missing table errors
-try:
-    from django.core.management import call_command
-    print("Running automatic database migrations...")
-    call_command('migrate', interactive=False)
-    print("Migrations complete.")
-except Exception as e:
-    print(f"Error running migrations: {e}")
