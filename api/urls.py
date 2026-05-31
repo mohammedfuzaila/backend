@@ -7,7 +7,7 @@ from .views import (
     ExperienceViewSet, CertificateViewSet, TestimonialViewSet,
     BlogPostViewSet, ContactMessageViewSet, SocialLinkViewSet,
     SeoSettingsView, SiteSettingsView, ServiceViewSet,
-    DashboardStatsView, mark_message_read
+    DashboardStatsView, mark_message_read, health_check
 )
 
 router = DefaultRouter()
@@ -22,6 +22,9 @@ router.register(r'social-links', SocialLinkViewSet, basename='social-link')
 router.register(r'services', ServiceViewSet, basename='service')
 
 urlpatterns = [
+    # Health check (public, no auth)
+    path('health/', health_check, name='health'),
+
     # JWT Auth
     path('auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

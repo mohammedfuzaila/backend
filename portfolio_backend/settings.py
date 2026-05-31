@@ -7,7 +7,6 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 from datetime import timedelta
-import dj_database_url
 
 load_dotenv()
 
@@ -70,9 +69,12 @@ WSGI_APPLICATION = 'portfolio_backend.wsgi.application'
 # Database — uses PostgreSQL on Render, SQLite locally
 DATABASE_URL = os.getenv('DATABASE_URL')
 if DATABASE_URL:
-    DATABASES = {
-        'default': dj_database_url.parse(DATABASE_URL)
-    }
+    import dj_database_url
+    _db_config = dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+    # Force psycopg2 engine (dj-database-url 2.x may auto-detect psycopg3)
+    _db_config['ENGINE'] = 'django.db.backends.postgresql'
+    DATABASES = {'default': _db_config}
+    print(f"[DB] Using PostgreSQL: {DATABASE_URL[:40]}...")
 else:
     DATABASES = {
         'default': {
@@ -80,6 +82,7 @@ else:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
+    print("[DB] No DATABASE_URL found — using SQLite (local dev only)")
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},

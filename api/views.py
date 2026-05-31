@@ -285,3 +285,37 @@ def mark_message_read(request, pk):
         return Response({'status': 'marked as read'})
     except ContactMessage.DoesNotExist:
         return Response({'error': 'Not found'}, status=404)
+
+
+# ─── Health Check ─────────────────────────────────────────────────────────────
+
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def health_check(request):
+    """
+    Public endpoint to diagnose DB connectivity.
+    Visit /api/health/ to see what's working.
+    """
+    import os
+    from django.db import connection
+
+    status = {'status': 'ok', 'database': 'unknown', 'error': None}
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT 1')
+        status['database'] = 'connected'
+
+        # Check tables exist
+        tables = connection.introspection.table_names()
+        status['tables_found'] = len(tables)
+        status['has_hero_table'] = 'api_herosection' in tables
+        status['db_engine'] = connection.settings_dict.get('ENGINE', 'unknown')
+        status['database_url_set'] = bool(os.getenv('DATABASE_URL'))
+
+    except Exception as e:
+        status['status'] = 'error'
+        status['database'] = 'failed'
+        status['error'] = str(e)
+
+    return Response(status)
