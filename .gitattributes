@@ -1,0 +1,12 @@
+# Force Unix line endings (LF) for shell scripts — critical for Linux/Render execution
+*.sh text eol=lf
+
+# Python files — keep LF
+*.py text eol=lf
+
+# YAML files — keep LF
+*.yaml text eol=lf
+*.yml text eol=lf
+
+# Everything else — auto
+* text=auto
