@@ -3,6 +3,7 @@ Django settings for portfolio_backend project.
 Production-ready for Render deployment.
 """
 
+import logging
 from pathlib import Path
 import os
 from dotenv import load_dotenv
@@ -74,7 +75,7 @@ if DATABASE_URL:
     # Force psycopg2 engine (dj-database-url 2.x may auto-detect psycopg3)
     _db_config['ENGINE'] = 'django.db.backends.postgresql'
     DATABASES = {'default': _db_config}
-    print(f"[DB] Using PostgreSQL: {DATABASE_URL[:40]}...")
+    logging.info('[DB] Using PostgreSQL')
 else:
     DATABASES = {
         'default': {
@@ -82,7 +83,7 @@ else:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
-    print("[DB] No DATABASE_URL found — using SQLite (local dev only)")
+    logging.info('[DB] No DATABASE_URL found — using SQLite (local dev only)')
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -99,7 +100,15 @@ USE_TZ = True
 # Static files (WhiteNoise for production)
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
+# STORAGES replaces the deprecated STATICFILES_STORAGE setting (Django 4.2+)
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
+    },
+}
 
 # Media files
 MEDIA_URL = '/media/'

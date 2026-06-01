@@ -1,34 +1,54 @@
-from rest_framework import viewsets, permissions, status, generics
+"""
+Django views for the portfolio API.
+
+All endpoints return identical responses to the frontend.
+OperationalError / ProgrammingError guards prevent HTTP 500 when the
+database has not been migrated yet (e.g. fresh SQLite on cold-start).
+"""
+
+import os
+
+from django.conf import settings
+from django.core.mail import EmailMessage
+from django.db import OperationalError, ProgrammingError, connection
+
+from django_filters.rest_framework import DjangoFilterBackend
+
+from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.views import TokenObtainPairView
-from django.conf import settings
-from django.db import OperationalError, ProgrammingError
-from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import (
-    HeroSection, AboutSection, Skill, Project, Experience,
-    Certificate, Testimonial, BlogPost, ContactMessage,
-    SocialLink, SeoSettings, SiteSettings, Service
+    AboutSection, BlogPost, Certificate, ContactMessage, Experience,
+    HeroSection, Project, SeoSettings, Service, SiteSettings, Skill,
+    SocialLink, Testimonial,
 )
 from .serializers import (
-    HeroSectionSerializer, AboutSectionSerializer, SkillSerializer,
-    ProjectSerializer, ExperienceSerializer, CertificateSerializer,
-    TestimonialSerializer, BlogPostSerializer, ContactMessageSerializer,
-    SocialLinkSerializer, SeoSettingsSerializer, SiteSettingsSerializer,
-    ServiceSerializer, DashboardStatsSerializer
+    AboutSectionSerializer, BlogPostSerializer, CertificateSerializer,
+    ContactMessageSerializer, DashboardStatsSerializer, ExperienceSerializer,
+    HeroSectionSerializer, ProjectSerializer, SeoSettingsSerializer,
+    ServiceSerializer, SiteSettingsSerializer, SkillSerializer,
+    SocialLinkSerializer, TestimonialSerializer,
 )
 
 
+# ---------------------------------------------------------------------------
+# Custom permission
+# ---------------------------------------------------------------------------
+
 class IsAdminOrReadOnly(permissions.BasePermission):
+    """Allow safe (read-only) methods to everyone; write access only to staff."""
+
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
             return True
         return request.user and request.user.is_staff
 
 
-# ─── Public Read-Only ViewSets ───────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Singleton section views (Hero, About, Seo, SiteSettings)
+# ---------------------------------------------------------------------------
 
 class HeroSectionView(APIView):
     permission_classes = [IsAdminOrReadOnly]
@@ -48,13 +68,15 @@ class HeroSectionView(APIView):
             hero = HeroSection.objects.first()
             if not hero:
                 hero = HeroSection.objects.create()
-            serializer = HeroSectionSerializer(hero, data=request.data, partial=True, context={'request': request})
+            serializer = HeroSectionSerializer(
+                hero, data=request.data, partial=True, context={'request': request}
+            )
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data)
-            return Response(serializer.errors, status=400)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except (OperationalError, ProgrammingError) as e:
-            return Response({'error': str(e)}, status=503)
+            return Response({'error': str(e)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
 class AboutSectionView(APIView):
@@ -75,14 +97,76 @@ class AboutSectionView(APIView):
             about = AboutSection.objects.first()
             if not about:
                 about = AboutSection.objects.create()
-            serializer = AboutSectionSerializer(about, data=request.data, partial=True, context={'request': request})
+            serializer = AboutSectionSerializer(
+                about, data=request.data, partial=True, context={'request': request}
+            )
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data)
-            return Response(serializer.errors, status=400)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except (OperationalError, ProgrammingError) as e:
-            return Response({'error': str(e)}, status=503)
+            return Response({'error': str(e)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
+
+class SeoSettingsView(APIView):
+    permission_classes = [IsAdminOrReadOnly]
+
+    def get(self, request):
+        try:
+            seo = SeoSettings.objects.first()
+            if not seo:
+                return Response({})
+            serializer = SeoSettingsSerializer(seo, context={'request': request})
+            return Response(serializer.data)
+        except (OperationalError, ProgrammingError):
+            return Response({})
+
+    def patch(self, request):
+        try:
+            seo = SeoSettings.objects.first()
+            if not seo:
+                seo = SeoSettings.objects.create()
+            serializer = SeoSettingsSerializer(
+                seo, data=request.data, partial=True, context={'request': request}
+            )
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except (OperationalError, ProgrammingError) as e:
+            return Response({'error': str(e)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+class SiteSettingsView(APIView):
+    permission_classes = [IsAdminOrReadOnly]
+
+    def get(self, request):
+        try:
+            s = SiteSettings.objects.first()
+            if not s:
+                return Response({})
+            serializer = SiteSettingsSerializer(s)
+            return Response(serializer.data)
+        except (OperationalError, ProgrammingError):
+            return Response({})
+
+    def patch(self, request):
+        try:
+            s = SiteSettings.objects.first()
+            if not s:
+                s = SiteSettings.objects.create()
+            serializer = SiteSettingsSerializer(s, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except (OperationalError, ProgrammingError) as e:
+            return Response({'error': str(e)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+# ---------------------------------------------------------------------------
+# ViewSets (list/detail endpoints via DefaultRouter)
+# ---------------------------------------------------------------------------
 
 class SkillViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrReadOnly]
@@ -234,25 +318,19 @@ class ContactMessageViewSet(viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
             msg = serializer.save()
 
-            # Send email notification via Brevo SMTP
+            # Send email notification — fail_silently so a mail error never
+            # prevents the contact message from being saved.
             try:
-                from django.core.mail import EmailMessage
-
                 email_body = (
-                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
-                    f'  NEW CONTACT FORM MESSAGE\n'
-                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'New contact form message\n\n'
                     f'Name:    {msg.name}\n'
                     f'Email:   {msg.email}\n'
                     f'Subject: {msg.subject}\n\n'
-                    f'──────────── Message ────────────\n\n'
-                    f'{msg.message}\n\n'
-                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
-                    f'Reply directly to this email to respond to {msg.name}\n'
+                    f'Message:\n{msg.message}\n\n'
+                    f'Reply directly to this email to respond to {msg.name}.'
                 )
-
                 email = EmailMessage(
-                    subject=f'Portfolio Contact: {msg.subject} — from {msg.name}',
+                    subject=f'Portfolio Contact: {msg.subject} - from {msg.name}',
                     body=email_body,
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     to=[settings.RECIPIENT_EMAIL],
@@ -266,7 +344,7 @@ class ContactMessageViewSet(viewsets.ModelViewSet):
         except (OperationalError, ProgrammingError):
             return Response(
                 {'error': 'Database not ready. Please try again later.'},
-                status=503
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
 
@@ -289,60 +367,6 @@ class SocialLinkViewSet(viewsets.ModelViewSet):
             return Response([])
 
 
-class SeoSettingsView(APIView):
-    permission_classes = [IsAdminOrReadOnly]
-
-    def get(self, request):
-        try:
-            seo = SeoSettings.objects.first()
-            if not seo:
-                return Response({})
-            serializer = SeoSettingsSerializer(seo, context={'request': request})
-            return Response(serializer.data)
-        except (OperationalError, ProgrammingError):
-            return Response({})
-
-    def patch(self, request):
-        try:
-            seo = SeoSettings.objects.first()
-            if not seo:
-                seo = SeoSettings.objects.create()
-            serializer = SeoSettingsSerializer(seo, data=request.data, partial=True, context={'request': request})
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data)
-            return Response(serializer.errors, status=400)
-        except (OperationalError, ProgrammingError) as e:
-            return Response({'error': str(e)}, status=503)
-
-
-class SiteSettingsView(APIView):
-    permission_classes = [IsAdminOrReadOnly]
-
-    def get(self, request):
-        try:
-            s = SiteSettings.objects.first()
-            if not s:
-                return Response({})
-            serializer = SiteSettingsSerializer(s)
-            return Response(serializer.data)
-        except (OperationalError, ProgrammingError):
-            return Response({})
-
-    def patch(self, request):
-        try:
-            s = SiteSettings.objects.first()
-            if not s:
-                s = SiteSettings.objects.create()
-            serializer = SiteSettingsSerializer(s, data=request.data, partial=True)
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data)
-            return Response(serializer.errors, status=400)
-        except (OperationalError, ProgrammingError) as e:
-            return Response({'error': str(e)}, status=503)
-
-
 class ServiceViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrReadOnly]
     serializer_class = ServiceSerializer
@@ -362,7 +386,9 @@ class ServiceViewSet(viewsets.ModelViewSet):
             return Response([])
 
 
-# ─── Admin Dashboard Stats ────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Admin-only views
+# ---------------------------------------------------------------------------
 
 class DashboardStatsView(APIView):
     permission_classes = [permissions.IsAdminUser]
@@ -381,12 +407,16 @@ class DashboardStatsView(APIView):
             }
             return Response(data)
         except (OperationalError, ProgrammingError):
-            data = {
-                'total_projects': 0, 'total_skills': 0, 'total_messages': 0,
-                'unread_messages': 0, 'total_blogs': 0, 'published_blogs': 0,
-                'total_testimonials': 0, 'total_certificates': 0,
-            }
-            return Response(data)
+            return Response({
+                'total_projects': 0,
+                'total_skills': 0,
+                'total_messages': 0,
+                'unread_messages': 0,
+                'total_blogs': 0,
+                'published_blogs': 0,
+                'total_testimonials': 0,
+                'total_certificates': 0,
+            })
 
 
 @api_view(['PATCH'])
@@ -398,23 +428,22 @@ def mark_message_read(request, pk):
         msg.save()
         return Response({'status': 'marked as read'})
     except ContactMessage.DoesNotExist:
-        return Response({'error': 'Not found'}, status=404)
+        return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
     except (OperationalError, ProgrammingError) as e:
-        return Response({'error': str(e)}, status=503)
+        return Response({'error': str(e)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
-# ─── Health Check ─────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Health check (public)
+# ---------------------------------------------------------------------------
 
 @api_view(['GET'])
 @permission_classes([permissions.AllowAny])
 def health_check(request):
     """
-    Public endpoint to diagnose DB connectivity.
-    Visit /api/health/ to see what's working.
+    Public diagnostic endpoint.
+    Returns DB engine, whether DATABASE_URL is set, and migration status.
     """
-    import os
-    from django.db import connection
-
     result = {'status': 'ok', 'database': 'unknown', 'error': None}
 
     try:
@@ -422,7 +451,6 @@ def health_check(request):
             cursor.execute('SELECT 1')
         result['database'] = 'connected'
 
-        # Check tables exist
         tables = connection.introspection.table_names()
         result['tables_found'] = len(tables)
         result['has_hero_table'] = 'api_herosection' in tables
