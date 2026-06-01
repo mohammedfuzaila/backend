@@ -57,11 +57,11 @@ class HeroSectionView(APIView):
         try:
             hero = HeroSection.objects.filter(is_active=True).first()
             if not hero:
-                return Response({})
+                return Response(status=status.HTTP_204_NO_CONTENT)
             serializer = HeroSectionSerializer(hero, context={'request': request})
             return Response(serializer.data)
         except (OperationalError, ProgrammingError):
-            return Response({})
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
     def patch(self, request):
         try:
@@ -86,11 +86,11 @@ class AboutSectionView(APIView):
         try:
             about = AboutSection.objects.filter(is_active=True).first()
             if not about:
-                return Response({})
+                return Response(status=status.HTTP_204_NO_CONTENT)
             serializer = AboutSectionSerializer(about, context={'request': request})
             return Response(serializer.data)
         except (OperationalError, ProgrammingError):
-            return Response({})
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
     def patch(self, request):
         try:
@@ -115,11 +115,11 @@ class SeoSettingsView(APIView):
         try:
             seo = SeoSettings.objects.first()
             if not seo:
-                return Response({})
+                return Response(status=status.HTTP_204_NO_CONTENT)
             serializer = SeoSettingsSerializer(seo, context={'request': request})
             return Response(serializer.data)
         except (OperationalError, ProgrammingError):
-            return Response({})
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
     def patch(self, request):
         try:
@@ -144,11 +144,11 @@ class SiteSettingsView(APIView):
         try:
             s = SiteSettings.objects.first()
             if not s:
-                return Response({})
+                return Response(status=status.HTTP_204_NO_CONTENT)
             serializer = SiteSettingsSerializer(s)
             return Response(serializer.data)
         except (OperationalError, ProgrammingError):
-            return Response({})
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
     def patch(self, request):
         try:
