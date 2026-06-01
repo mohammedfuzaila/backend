@@ -209,8 +209,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         except (OperationalError, ProgrammingError):
             return Response([])
 
-    def get_serializer_context(self):
-        return {'request': self.request}
+
 
 
 class ExperienceViewSet(viewsets.ModelViewSet):
@@ -252,8 +251,7 @@ class CertificateViewSet(viewsets.ModelViewSet):
         except (OperationalError, ProgrammingError):
             return Response([])
 
-    def get_serializer_context(self):
-        return {'request': self.request}
+
 
 
 class TestimonialViewSet(viewsets.ModelViewSet):
@@ -274,8 +272,7 @@ class TestimonialViewSet(viewsets.ModelViewSet):
         except (OperationalError, ProgrammingError):
             return Response([])
 
-    def get_serializer_context(self):
-        return {'request': self.request}
+
 
 
 class BlogPostViewSet(viewsets.ModelViewSet):
@@ -298,8 +295,7 @@ class BlogPostViewSet(viewsets.ModelViewSet):
         except (OperationalError, ProgrammingError):
             return Response([])
 
-    def get_serializer_context(self):
-        return {'request': self.request}
+
 
 
 class ContactMessageViewSet(viewsets.ModelViewSet):
