@@ -71,7 +71,7 @@ WSGI_APPLICATION = 'portfolio_backend.wsgi.application'
 DATABASE_URL = os.getenv('DATABASE_URL')
 if DATABASE_URL:
     import dj_database_url
-    _db_config = dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+    _db_config = dj_database_url.parse(DATABASE_URL, conn_max_age=0)
     # Force psycopg2 engine (dj-database-url 2.x may auto-detect psycopg3)
     _db_config['ENGINE'] = 'django.db.backends.postgresql'
     DATABASES = {'default': _db_config}
