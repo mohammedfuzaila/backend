@@ -19,6 +19,7 @@ class HeroSectionSerializer(serializers.ModelSerializer):
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.profile_image.url)
+            return obj.profile_image.url
         return None
 
     def get_resume_file_url(self, obj):
@@ -26,6 +27,7 @@ class HeroSectionSerializer(serializers.ModelSerializer):
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.resume_file.url)
+            return obj.resume_file.url
         return None
 
 
@@ -41,6 +43,7 @@ class AboutSectionSerializer(serializers.ModelSerializer):
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.profile_image.url)
+            return obj.profile_image.url
         return None
 
 
@@ -62,6 +65,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
         return None
 
 
@@ -83,6 +87,7 @@ class CertificateSerializer(serializers.ModelSerializer):
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
         return None
 
 
@@ -98,6 +103,7 @@ class TestimonialSerializer(serializers.ModelSerializer):
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.avatar.url)
+            return obj.avatar.url
         return None
 
 
@@ -113,6 +119,7 @@ class BlogPostSerializer(serializers.ModelSerializer):
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.cover_image.url)
+            return obj.cover_image.url
         return None
 
 
@@ -141,6 +148,7 @@ class SeoSettingsSerializer(serializers.ModelSerializer):
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.og_image.url)
+            return obj.og_image.url
         return None
 
 
