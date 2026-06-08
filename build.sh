@@ -15,4 +15,7 @@ echo "=== Setting up initial data ==="
 # Create superuser and singleton model instances if not already present
 python manage.py setup_initial_data
 
+echo "=== Seeding database with fallback data ==="
+python seed_db.py
+
 echo "=== Build complete! ==="
