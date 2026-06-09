@@ -103,7 +103,7 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 # STORAGES replaces the deprecated STATICFILES_STORAGE setting (Django 4.2+)
 STORAGES = {
     'default': {
-        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+        'BACKEND': 'api.storage.DatabaseStorage',
     },
     'staticfiles': {
         'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
@@ -111,7 +111,7 @@ STORAGES = {
 }
 
 # Media files
-MEDIA_URL = '/media/'
+MEDIA_URL = '/api/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

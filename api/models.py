@@ -246,3 +246,13 @@ class Service(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class MediaFile(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+    content = models.BinaryField()
+    content_type = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Media File'

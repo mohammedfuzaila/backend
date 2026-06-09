@@ -11,7 +11,6 @@ urlpatterns = [
     path('django-admin/', admin.site.urls),
     path('api/', include('api.urls')),
     
-    # Serve media files (Django doesn't serve them by default in production with DEBUG=False)
-    # Required for Render deployment since there is no S3 configured.
-    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+    # Serve media files from the database (solves Render ephemeral storage issue)
+    path('api/media/<path:name>', getattr(__import__('api.views', fromlist=['serve_media']), 'serve_media')),
 ]

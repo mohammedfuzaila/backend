@@ -460,3 +460,15 @@ def health_check(request):
         result['error'] = str(e)
 
     return Response(result)
+
+from django.http import HttpResponse, Http404
+from urllib.parse import unquote
+from api.models import MediaFile
+
+def serve_media(request, name):
+    name = unquote(name)
+    try:
+        f = MediaFile.objects.get(name=name)
+        return HttpResponse(f.content, content_type=f.content_type)
+    except MediaFile.DoesNotExist:
+        raise Http404('Media file not found')
