@@ -6,11 +6,14 @@ OperationalError / ProgrammingError guards prevent HTTP 500 when the
 database has not been migrated yet (e.g. fresh SQLite on cold-start).
 """
 
+import logging
 import os
 
 from django.conf import settings
 from django.core.mail import EmailMessage
 from django.db import OperationalError, ProgrammingError, connection
+
+logger = logging.getLogger(__name__)
 
 from django_filters.rest_framework import DjangoFilterBackend
 
@@ -299,8 +302,12 @@ class BlogPostViewSet(viewsets.ModelViewSet):
 
 
 class ContactMessageViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAdminOrReadOnly]
     serializer_class = ContactMessageSerializer
+
+    def get_permissions(self):
+        if self.action == 'create':
+            return [permissions.AllowAny()]
+        return [permissions.IsAdminUser()]
 
     def get_queryset(self):
         try:
@@ -332,9 +339,9 @@ class ContactMessageViewSet(viewsets.ModelViewSet):
                     to=[settings.RECIPIENT_EMAIL],
                     reply_to=[msg.email],
                 )
-                email.send(fail_silently=True)
-            except Exception:
-                pass
+                email.send(fail_silently=False)
+            except Exception as e:
+                logger.error(f"Error sending contact email notification: {e}", exc_info=True)
 
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except (OperationalError, ProgrammingError):
